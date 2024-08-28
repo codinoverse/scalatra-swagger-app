@@ -1,0 +1,501 @@
+/********************************* Scalatra ************************/
+
+Create a Http Server in scala using Scalatra - a free web micro framework that giants like Netflix use in production
+
+We are going to build a simple REST API that we return "Scalatra rules!" on GET request
+
+Steps: 
+Step-1
+Lets create a new SBT Project and add two dependencies to our build.sbt file
+1) First scalatra itself
+2) second jetty - a Web server and javax Servlet container that will need to run scalatra on
+
+
+In the end your build.sbt file would look likename := "scalatra"
+
+			version := "0.1"	
+
+			scalaVersion := "2.12.8"
+
+			libraryDependencies ++= Seq(
+			  "org.scalatra" %% "scalatra" % "2.5.4",
+			  "org.eclipse.jetty" % "jetty-webapp" % "9.4.12.v20180830"
+			)
+			
+			
+			
+			
+Step -2
+The next step is to configure a webserver to be able to run Scalatra on it. For this purpose, I create a scala object WebServiceBuilder that holds a function that does it for use
+
+
+			import javax.servlet.Servlet
+			import org.eclipse.jetty.server.Server
+			import org.eclipse.jetty.webapp.WebAppContext
+
+			object WebServiceBuilder {
+			  def buildWebService(port: Integer, webServiceClass: Class[_ <: Servlet]): Server = {
+				val server = new Server(port)
+				val context = new WebAppContext()
+				context.setContextPath("/")
+				context.setResourceBase("/tmp")
+				context.addServlet(webServiceClass, "/*")
+				server.setHandler(context)
+				server
+			  }
+			}
+			
+
+
+Certainly! Here’s a breakdown of each line of this code snippet, which is used to set up and configure a Jetty server
+			
+			val server = new Server(port)
+
+Purpose: This line creates a new instance of the Jetty Server class
+Explanation: 'Server' is the core class in jetty that represents the web server. The 'port' parameter specifies the port number on
+which the server will listen for incoming HttpRequests
+
+			val context = new WebAppContext()
+
+purpose: This line creates a new instance of the 'WebAppContext' class
+Explanation:
+	'WebAppContext' is a jetty class that provides a context for web applications. It represents a webApplication deployment and configuration. It allows you to set various properties such as the web application's root directory and context path
+	
+	
+	
+			context.setContextPath("/")
+Purpose: This line sets the context path of the webApplication
+Explanation: 
+		The context Path is the base URL for the web application. By setting it to '/' the application will be available to the root server
+		
+		
+		
+		context.addServlet(webServiceClass, "/")
+		
+		
+purpose : 
+		This line adds servlet to the context
+Explanation:
+	addServlet registers a servlet with the specified URL pattern. webServiceClass should be a class that extends HttpServlet or a similar class. The URL pattern / means that the servlet will handle requests sent to the root path of the application.
+	
+	
+		server.setHandler(context)
+
+Purpose:
+	This line sets the handler for the server.
+Explanation:
+	setHandler specifies what the server should do with incoming requests. In this case , 'WebAppContext' as the handler , which means jetty will use the context to process request.
+	
+	
+	
+	
+	
+	
+	
+Flow Of scalatra Project:
+
+Scalatra is a lightweight, flexible web framework built on top of Scala and Lift. Understanding its flow and lifecycle is crucial for effective development.
+
+Flow of a Scalatra Application
+
+	1) Request Reception:
+		- A client sends HttpRequest to the scalatra application
+		- The webserver (eg:Tomcat,Jetty) recieves the request
+		
+	2) Routing:
+		- The requestis routed to the appropriate Scalatra servlet based on the URL pattern
+		- Scalatra uses pattern matching pattern approach to determine the servlet
+		
+	3) Servlet Instantiation:
+		- If the servlet instance doesn't exists, its created
+		- The servlets init method is called during application life cycle
+		
+	4) Action Execution:
+		- The servlet's appropriate action method is invoked based on the HTTP method (GET, POST, etc.).
+		- This method typically performs business logic and renders a response.
+		
+	5) Response Generation
+		- The servlet creates an HTTP response, setting headers, status code, and content.
+		- Scalatra provides helper methods for content negotiation, rendering templates, etc.
+		
+	6) Response Sending:
+		- The response is sent back to the client by the web server.
+		
+Scalatra Lifecycle
+
+The Scalatra lifecycle involves the following key stages:
+
+	1) Application Startup:
+		- The webserver starts
+		- The scalatra ScalatraListener is initialized
+		- The ScalatraBootstrap is loaded
+		- Servlets are initialized
+	
+	2) Request Handling:
+		- The flow described above for each incoming request.
+	
+	3) Application Shutdown:
+		- The web server stops
+		- Servlets are destroyed.
+		
+		
+Role of ScalatraListener and ScalatraBootstrap
+
+ScalatraListener:
+	- This class implements the javax.servlet.ServletContextListener interface.
+	- It allows you to perform actions when the web application starts or stops.
+	Common use cases:
+	Initializing databases or caches.
+	Loading configuration files.
+	Registering custom filters or listeners.
+	
+ScalatraBootstrap:
+	This is the entry point of our application
+	It's responsible for configuring the Scalatra servlet and mapping it to URL patterns.
+	You can also perform additional initialization tasks here.
+	
+	Example code:
+	
+	build.sbt:
+	
+				val ScalatraVersion = "3.1.0"
+
+				ThisBuild / scalaVersion := "3.3.3"
+				ThisBuild / organization := "com.example"
+
+				lazy val hello = (project in file("."))
+				  .settings(
+					name := "My Scalatra Web App",
+					version := "0.1.0-SNAPSHOT",
+					libraryDependencies ++= Seq(
+					  "org.scalatra" %% "scalatra-jakarta" % ScalatraVersion,
+					  "org.scalatra" %% "scalatra-scalatest-jakarta" % ScalatraVersion % "test",
+					  "ch.qos.logback" % "logback-classic" % "1.5.6" % "runtime",
+					  "org.eclipse.jetty.ee10" % "jetty-ee10-webapp" % "12.0.10" % "container",
+					  "jakarta.servlet" % "jakarta.servlet-api" % "6.0.0" % "provided"
+					),
+				  )
+
+				enablePlugins(SbtTwirl)
+				enablePlugins(JettyPlugin)
+
+				Jetty / containerLibs := Seq("org.eclipse.jetty.ee10" % "jetty-ee10-runner" % "12.0.10" intransitive())
+				Jetty / containerMain := "org.eclipse.jetty.ee10.runner.Runner"
+				
+				
+	plugins.sbt
+	
+	
+	addSbtPlugin("org.playframework.twirl" % "sbt-twirl" % "2.0.6")
+	addSbtPlugin("com.earldouglas" % "xsbt-web-plugin" % "4.2.4")
+	
+	
+	
+	
+	
+	MainClass
+	
+		package com.example.app
+
+		import org.eclipse.jetty.ee10.webapp.WebAppContext
+		import org.eclipse.jetty.server.Server
+		import org.scalatra.servlet.ScalatraListener
+
+		object JettyLauncher extends App{
+
+		  val port = if(System.getenv("PORT")!=null) then System.getenv("PORT").toInt else 8080
+
+		  val server = new Server(port)
+		  val context = new WebAppContext()
+		  context.setContextPath("/")
+		  context.setBaseResourceAsString("src/main/webapp")
+		  context.setInitParameter(ScalatraListener.LifeCycleKey,"com.example.app.ScalatraBootstrap")
+		  context.addEventListener(new ScalatraListener)
+		  context.addServlet(classOf[HomeServlet],"/*")
+		  server.setHandler(context)
+		  server.start()
+		  server.join()
+
+		}
+		
+		
+	ScalatraBootstrap
+			
+			package com.example.app
+
+			import org.scalatra.LifeCycle
+			import jakarta.servlet.ServletContext
+
+			class ScalatraBootstrap extends LifeCycle{
+			  override def init(context: ServletContext): Unit = {
+				context.mount(new HomeServlet,"/")
+			  }
+
+			}
+			
+			
+
+	HomeServlet
+	
+			package com.example.app
+
+			import org.scalatra.ScalatraServlet
+
+			class HomeServlet extends ScalatraServlet{
+
+			  get("/"){
+				"Hello World!"
+			  }
+
+			}
+
+
+
+Explanation:
+	- Absolutely, the code you provided demonstrates the flow of a request in a Scalatra application using Jetty as the web server. Here's a breakdown of what happens at each step:
+	
+	1) client sends request
+		- A client (e.g., your web browser) sends an HTTP request to your application server (where the code runs) at the specified port (default 8080 in this case).
+		- The request includes information like the URL, HTTP method (GET, POST, etc.), headers, and potentially a body (for POST requests with data).
+		
+	2) Jetty Receives Request:
+		- The Jetty web server receives the incoming request.
+		- Jetty is responsible for managing network connections, handling basic HTTP parsing, and dispatching requests to the appropriate handlers.
+		
+	3) Jetty Routes Request to WebAppContext:
+		- Jetty identifies the relevant context based on the request's URL and configured context paths.
+		- Here, the context path is set to "/", meaning any request targeting "/" will be handled by this context.
+		
+	4) ScalatraListener Notified (if present)
+		- Since the ScalatraListener is added in JettyLauncher, it's notified when the context is initialized.
+		- This listener class could perform initial application setup tasks like database connection or configuration loading (although it's not doing anything specific in this example).
+		
+	5)  ScalatraBootstrap Configuration:
+		- The context retrieves the initialization parameter named ScalatraListener.LifeCycleKey (a constant defined by Scalatra).
+		- This parameter specifies the class responsible for configuring the Scalatra servlet (com.example.app.ScalatraBootstrap in this case)
+		- The framework instantiates the ScalatraBootstrap class and calls its init method.
+		
+	6) ScalatraBootstrap Mounts Servlets:
+		- Inside the ScalatraBootstrap.init method, the context.mount function is used to register the HomeServlet with the URL pattern "/".
+		- This essentially tells the framework to handle any request targeting the root path ("/") using the HomeServlet.
+		
+	7)  Servlet Mapping by Jetty:
+		- Now, Jetty has a complete picture: a context responsible for specific URLs and a servlet mapped to handle requests within that context.
+		
+	8)  Request Reaches HomeServlet:
+		- When a request arrives that matches the "/ " pattern (e.g., http://localhost:8080/), Jetty dispatches it to the HomeServlet.
+		
+		
+	9) HomeServlet Processes Request:
+		- The get method of HomeServlet is invoked because the request method is GET (the default for web browsers).
+			This method simply returns the string "Hello World!"
+			
+	10) Response Sent Back:
+		- The HomeServlet constructs an HTTP response object with the content "Hello World!" (likely as plain text).
+		- This response is sent back to Jetty.
+	
+	11) Jetty Sends Response to Client:
+		- Jetty receives the response from the servlet.
+		- It formats the response into an HTTP message (adding headers, status code, etc.) and sends it back to the client.
+	
+	12)  Client Receives Response:
+		- The client (web browser) receives the response from the server.
+		- The browser interprets the response based on its content type and displays "Hello World!" on the page.
+		
+	Key Points:
+	- Jetty acts as the web server handling network communication and request routing.
+	- ScalatraListener and ScalatraBootstrap provide lifecycle hooks and configuration for the Scalatra framework within the Jetty context.
+	- Servlets like HomeServlet handle specific request URLs and methods, performing business logic and generating responses.
+	
+	
+Another explanation for the above code :
+
+Here's a step-by-step explanation of how the request flows through your Scala web application using Jetty and Scalatra:
+
+1) Jetty Server Initialization:
+	- Port Configuration: The JettyLauncher object retrieves the port number from the environment variable PORT, defaulting to 8080 if not set.
+	- Server Setup: A new Server instance is created with the specified port.
+	- WebAppContext Configuration:
+		- setContextPath("/"): Sets the root context path for the web application.
+		- setBaseResourceAsString("src/main/webapp"): Sets the base resource location, where web resources like HTML, CSS, and JavaScript are located.
+		- setInitParameter(ScalatraListener.LifeCycleKey, "com.example.app.ScalatraBootstrap"): Configures Scalatra to use the ScalatraBootstrap class to initialize the application context
+		- addEventListener(new ScalatraListener): Adds a Scalatra event listener to handle the lifecycle of the Scalatra application.
+		- addServlet(classOf[HomeServlet], "/*"): Maps all requests (/*) to the HomeServlet
+		Server Start: The server is started with server.start() and waits for incoming requests with server.join().
+
+2) Scalatra Initialization (ScalatraBootstrap):
+	- Lifecycle Initialization: The ScalatraBootstrap class implements the LifeCycle trait and overrides the init method
+	- Servlet Mounting: During initialization, the init method mounts the HomeServlet at the root path (/), meaning it handles requests to the root URL.
+	
+3) Request Handling:
+	- Servlet Mapping: When a request is made to the root URL (/), Jetty routes the request to the HomeServlet based on the servlet mapping defined in JettyLauncher.
+	- ScalatraServlet Handling: The HomeServlet extends ScalatraServlet and defines a route for GET /. The get("/") method responds with "Hello World!".
+	
+
+
+
+Another explanation of the code :
+
+1) JettyLauncher:
+	- The JettyLauncher object is the entry point of your application. It extends the App trait, which means it will be executed when the application starts.
+	- It retrieves the PORT environment variable and sets it as the port for the Jetty server. If the environment variable is not set, it defaults to port 8080.
+	- A new Server instance is created with the specified port.
+	- A WebAppContext is created and configured:
+		- The context path is set to /.
+		- The base resource directory is set to src/main/webapp
+		- The ScalatraListener.LifeCycleKey init parameter is set to "com.example.app.ScalatraBootstrap", which specifies the bootstrap class for Scalatra.
+		- A ScalatraListener is added as an event listener to the context.
+		- The HomeServlet is added as a servlet, mapping it to the root URL (/*).
+	- The WebAppContext is set as the handler for the Jetty server.
+	- The Jetty server is started.
+	- The server.join() method is called, which blocks the main thread until the server is stopped.
+	
+2) ScalatraBootstrap
+	- The ScalatraBootstrap class extends the LifeCycle trait from Scalatra.
+	- In the init method, which is called when the application starts, the HomeServlet is mounted at the root URL (/).
+
+3) HomeServlet
+	- The HomeServlet class extends the ScalatraServlet trait from Scalatra.
+	- It defines a GET route for the root URL (/).
+	- When a GET request is made to the root URL, the route handler returns the string "Hello World!"
+	
+Now, let's see what happens when a request is made to your application:
+
+	- The request is received by the Jetty server.
+	- The Jetty server passes the request to the WebAppContext.
+	- The WebAppContext recognizes the ScalatraListener and invokes the ScalatraBootstrap class.
+	- The ScalatraBootstrap class mounts the HomeServlet at the root URL (/).
+	- The WebAppContext maps the request to the HomeServlet.
+	- The HomeServlet handles the request and returns the string "Hello World!".
+	- The response is sent back to the client through the Jetty server.
+
+In summary, the request first goes to the Jetty server, which is configured with a WebAppContext. The WebAppContext is responsible for mapping the request to the appropriate Scalatra servlet, in this case, the HomeServlet. The HomeServlet handles the request and returns the response, which is then sent back to the client through the Jetty server.
+	
+	
+
+
+
+
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+Let's stop here for a minute and have a closer look on the configuration of the context.
+In this line we set the context path. It is just a prefix for a URL which is used to select a context for our incoming request.
+Typically a URL in a Java servlet server has the following format http://hostname.com/contextPath/servletPath/pathInfo Each of the path elements can have zero or more / separated elements. If there is no context path, the context is referred to as the root context. The root context must be configured as /. How you set the context path depends on how you deploy the web application. We do not need a context path in our app, so we just refer to the root with/ in our configuration of the context.
+
+
+In the next line
+	context.addServlet(webServiceClass, "/*")
+	
+we pass the class of our webservice (which is a servlet) and the path to map servlet to.
+
+When the context is configured, we pass it to the server:
+
+	server.setHandler(context)
+	
+	
+Voalia! The configuration of the server is done and we can create our REST API.
+
+
+
+For this purpose, I created a new Scala class WebService where I defined my REST API
+
+import org.scalatra.ScalatraServlet
+
+class WebService extends ScalatraServlet  {
+  get("/") {
+    "Scalatra rules!"
+  }
+}
+
+In the Main, I instantiated a server instance and made it to start on the port 8080.
+
+
+import org.eclipse.jetty.server.Server
+object Main extends App {
+
+  val server: Server = WebServiceBuilder.buildWebService(8080, classOf[WebService])
+  server.start()
+}
+
+
+
+
+
+
+
+
+Important definitions:
+1) Application Context:
+		In the context of web application and frameworks, `ApplicationContext` often refers to a central place
+		where the application configuration and components are maintained. Its a concept used in various framework
+		like Spring in java or similar concepts in environment
+		
+		Purpose:
+			It serves as a container that holds the configuration settings and bean(components of your app).
+			It helps in managing the lifecycle components and provides a way to access them throughout the application
+			
+		How it works?
+			Think of ApplicationContext` as a large toolbox where all the tools(components) you need to build your application
+			are stored. You can easily access any tool you need from this toolbox.
+			
+
+
+2) WebAppContext
+		`WebAppContext` is a specific type of context used in jetty, a popular Java-based web server. It is used to configure and manage 
+		web application running on the server
+		
+		Purpose:
+			It helps in setting up how the web application is served. This includes things like specifying where the application's files are located, where URL paths the application should respond to and what servlets are used.
+			
+		How it works:
+			Imagine you have a website with various pages and resources `WebAppContext` is like a manager who tells the server
+			where to find these pages, what parts of the website should be accesible , and how to handle different type of reuqest from users
+			
+
+3) Context:
+	The term context is used in different ways in various programming environments. Generally, it refers to an environment or a set of conditions in which something operates
+
+	In Web Servers:
+		For web servers like Jetty, Context (often ContextHandler or similar) is a way to manage how specific web applications or resources are handled. It includes settings like the base directory for files and the URL path to map.
+		
+	In General Programming:
+		In a broader sense, Context could mean the environment or state within which code is executed. For example, in programming, a Context might include settings, user information, or configuration options relevant to the task at hand.
+		
+		
+Putting it All together:
+ApplicationContext:
+	Think of it as a comprehensive setup for your entire application, managing its components and configuration.
+	
+WebAppContext: It’s a specialized setup within a web server like Jetty, focusing on how your web application is deployed and served.
+
+Context: This is a general term for the environment or conditions in which something operates, and it can have specific meanings in different contexts.
